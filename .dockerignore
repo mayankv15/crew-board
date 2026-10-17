@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/data
+**/.vitest
+.git
+.env
+.env.*
+!.env.example
+*.db
+*.db-*

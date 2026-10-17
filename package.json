@@ -12,23 +12,35 @@
     "web"
   ],
   "scripts": {
+    "preinstall": "node -e \"if(+process.versions.node.split('.')[0]<24){console.error('\\n  Crew Board needs Node 24 or newer, but this is '+process.version+'.\\n  Fix:  nvm install 24 && nvm use 24   (then:  npm ci)\\n');process.exit(1)}\"",
+    "predev": "node -e \"if(+process.versions.node.split('.')[0]<24){console.error('\\n  Crew Board needs Node 24 or newer, but this is '+process.version+'.\\n  Fix:  nvm install 24 && nvm use 24   (then:  npm ci)\\n');process.exit(1)}\"",
+    "pretest": "node -e \"if(+process.versions.node.split('.')[0]<24){console.error('\\n  Crew Board needs Node 24 or newer, but this is '+process.version+'.\\n  Fix:  nvm install 24 && nvm use 24   (then:  npm ci)\\n');process.exit(1)}\"",
     "setup": "node scripts/setup.mjs",
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "node scripts/dev.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . --max-warnings 0",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "sync": "npm run sync -w api",
-    "webhook:test": "npm run webhook:test -w api --"
+    "webhook:test": "npm run webhook:test -w api --",
+    "seed": "npm run seed -w api",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "eslint": "10.13.0",
+    "eslint-plugin-jsx-a11y-x": "0.2.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
+    "knip": "6.41.0",
+    "prettier": "3.9.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.2"
   },
   "allowScripts": {
-    "esbuild": false
+    "esbuild": false,
+    "better-sqlite3": false
   }
 }

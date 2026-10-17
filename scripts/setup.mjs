@@ -1,4 +1,3 @@
-// One-time local setup: creates .env with a freshly generated webhook secret if it does not exist.
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 

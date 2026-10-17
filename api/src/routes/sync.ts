@@ -14,7 +14,6 @@ export const syncRoutes =
     const app = instance.withTypeProvider<ZodTypeProvider>();
     const tags = ['sync'];
 
-    // Returns 202 at once; the run continues in the background and is followed through GET /sync/runs/:id.
     app.post(
       '/sync/technicians',
       {
@@ -27,8 +26,10 @@ export const syncRoutes =
       },
     );
 
-    app.get('/sync/runs', { schema: { tags, querystring: SyncRunsQuery, response: { 200: z.array(SyncRunSchema) } } }, async (req) =>
-      listRuns(db, req.query.limit),
+    app.get(
+      '/sync/runs',
+      { schema: { tags, querystring: SyncRunsQuery, response: { 200: z.array(SyncRunSchema) } } },
+      async (req) => listRuns(db, req.query.limit),
     );
 
     app.get('/sync/runs/:id', { schema: { tags, params: IdParams, response: { 200: SyncRunSchema } } }, async (req) => {

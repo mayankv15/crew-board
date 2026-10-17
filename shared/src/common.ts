@@ -3,7 +3,6 @@ import { SKILLS } from './skills.ts';
 
 export const SkillSchema = z.enum(SKILLS);
 
-// Calendar day, YYYY-MM-DD. Dates carry no time or zone, so there is no timezone logic anywhere.
 export const IsoDate = z.iso.date();
 
 export const PageQuery = z.object({
@@ -21,13 +20,13 @@ export const pageOf = <T extends z.ZodType>(item: T) =>
     totalPages: z.number().int(),
   });
 
-export type Page<T> = {
+export interface Page<T> {
   data: T[];
   page: number;
   pageSize: number;
   total: number;
   totalPages: number;
-};
+}
 
 export const ERROR_CODES = [
   'VALIDATION_ERROR',
@@ -46,7 +45,6 @@ export const ERROR_CODES = [
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
-// The one error shape every endpoint returns.
 export const ApiErrorBody = z.object({
   error: z.object({
     code: z.enum(ERROR_CODES),

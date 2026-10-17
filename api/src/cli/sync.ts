@@ -4,11 +4,14 @@ import { createHttpHrClient } from '../integration/hrClient.ts';
 import { startSync } from '../integration/sync.ts';
 import { failInterruptedRuns } from '../repositories/syncRuns.ts';
 
-// npm run sync. Exit code: 0 succeeded, 2 partial (some pages or records failed), 1 failed.
 const config = loadConfig();
 const db = openDatabase(config.DATABASE_PATH);
 failInterruptedRuns(db);
-const hr = createHttpHrClient({ baseUrl: config.HR_BASE_URL, timeoutMs: config.HR_TIMEOUT_MS, maxRetries: config.HR_MAX_RETRIES });
+const hr = createHttpHrClient({
+  baseUrl: config.HR_BASE_URL,
+  timeoutMs: config.HR_TIMEOUT_MS,
+  maxRetries: config.HR_MAX_RETRIES,
+});
 const log = { info: (_o: object, m: string) => console.log(m), error: (o: object, m: string) => console.error(m, o) };
 
 try {

@@ -2,10 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { signPayload } from '../integration/signature.ts';
 
-// Sends a correctly signed test event to the running API.
-//   npm run webhook:test -- --type technician.deactivated --external-id 5
-//   npm run webhook:test -- --type technician.updated --external-id 5 --city Dallas --state Texas
-// Extra flags: --replay (send the same event twice), --bad-signature, --stale (old timestamp), --url
 const { values } = parseArgs({
   options: {
     type: { type: 'string', default: 'technician.updated' },
@@ -32,7 +28,7 @@ if (!secret || secret.length < 32) {
 const url = values.url ?? process.env.WEBHOOK_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}/webhooks/hr`;
 const externalId = Number(values['external-id']);
 const type = values.type === 'updated' || values.type === 'deactivated' ? `technician.${values.type}` : values.type;
-const [firstName = 'Test', ...rest] = (values.name ?? '').split(' ');
+const [firstName = 'Test', ...rest] = values.name.split(' ');
 
 const event =
   type === 'technician.deactivated'

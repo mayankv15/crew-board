@@ -5,12 +5,9 @@ import { createPosition } from '../repositories/positions.ts';
 import { createProject } from '../repositories/projects.ts';
 import fixtureUsers from './fixture-users.json' with { type: 'json' };
 
-// Stand-in HR used only when the real HR API cannot be reached during seeding.
-// It goes through the same mapping and upsert code as the real thing.
-export const fixtureHr: HrClient = {
-  async fetchPage(skip, limit) {
-    return { users: fixtureUsers.slice(skip, skip + limit), total: fixtureUsers.length };
-  },
+const fixtureHr: HrClient = {
+  fetchPage: (skip, limit) =>
+    Promise.resolve({ users: fixtureUsers.slice(skip, skip + limit), total: fixtureUsers.length }),
 };
 
 type Log = SyncDeps['log'];
@@ -42,9 +39,11 @@ const DEMO = [
   },
 ] as const;
 
-// Safe to run any number of times: demo projects are added only to an empty database, and the
-// technician sync is itself idempotent.
-export async function seedDemo(deps: { db: Db; hr: HrClient; log: Log }): Promise<{ projects: number; technicians: number; usedFixture: boolean }> {
+export async function seedDemo(deps: {
+  db: Db;
+  hr: HrClient;
+  log: Log;
+}): Promise<{ projects: number; technicians: number; usedFixture: boolean }> {
   const { db, hr, log } = deps;
   const count = (table: string) => (db.prepare('SELECT COUNT(*) AS n FROM ' + table).get() as { n: number }).n;
 

@@ -33,7 +33,12 @@ export interface RouteDeps extends AppDeps {
   app: FastifyInstance;
 }
 
-const body = (code: ErrorCode, message: string, requestId: string, details?: Record<string, unknown>): ApiErrorBody => ({
+const body = (
+  code: ErrorCode,
+  message: string,
+  requestId: string,
+  details?: Record<string, unknown>,
+): ApiErrorBody => ({
   error: { code, message, requestId, ...(details ? { details } : {}) },
 });
 
@@ -44,8 +49,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     logger:
       deps.logger === false
         ? false
-        : { level: 'info', redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-hr-signature"]'] },
-    // Our own id per request, never one supplied by the client.
+        : {
+            level: 'info',
+            redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-hr-signature"]'],
+          },
     genReqId: () => randomUUID(),
     requestIdHeader: false,
     trustProxy: config.TRUST_PROXY,
@@ -65,13 +72,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     transform: jsonSchemaTransform,
   });
   if (config.NODE_ENV !== 'production') {
-    // Dev and test only: the Swagger UI reads its static files from disk, so it is loaded lazily,
-    // kept out of the production bundle, and the production image does not install it.
     const { default: swaggerUi } = await import('@fastify/swagger-ui');
     await app.register(swaggerUi, { routePrefix: '/docs' });
   }
 
-  // The one place that turns any failure into the one error shape.
   app.setErrorHandler((error, request, reply) => {
     const requestId = request.id;
     if (error instanceof AppError) {
@@ -79,25 +83,32 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
     if (hasZodFastifySchemaValidationErrors(error)) {
       const issues = error.validation.map((v) => ({
-        field: v.instancePath.replace(/^\//, '').replace(/\//g, '.') || String((v.params as { issue?: { path?: unknown[] } })?.issue?.path?.join('.') ?? ''),
+        field:
+          v.instancePath.replace(/^\//, '').replace(/\//g, '.') ||
+          String((v.params as { issue?: { path?: unknown[] } }).issue?.path?.join('.') ?? ''),
         message: v.message ?? 'Invalid value',
       }));
-      return reply.status(400).send(body('VALIDATION_ERROR', 'The request is not valid. Fix the listed fields and try again.', requestId, { issues }));
+      return reply.status(400).send(
+        body('VALIDATION_ERROR', 'The request is not valid. Fix the listed fields and try again.', requestId, {
+          issues,
+        }),
+      );
     }
     const status = (error as { statusCode?: number }).statusCode;
-    if (status === 413) return reply.status(413).send(body('PAYLOAD_TOO_LARGE', 'The request body is too large.', requestId));
-    if (status === 429) return reply.status(429).send(body('RATE_LIMITED', 'Too many requests. Wait a moment and try again.', requestId));
+    if (status === 413)
+      return reply.status(413).send(body('PAYLOAD_TOO_LARGE', 'The request body is too large.', requestId));
+    if (status === 429)
+      return reply.status(429).send(body('RATE_LIMITED', 'Too many requests. Wait a moment and try again.', requestId));
     if (status === 400 || status === 415) {
       return reply.status(400).send(body('VALIDATION_ERROR', 'The request body could not be read as JSON.', requestId));
     }
-    // Anything else is a bug or an outage. Log the detail, tell the client nothing about it.
     request.log.error({ err: error }, 'unhandled error');
-    return reply.status(500).send(body('INTERNAL', 'Something went wrong on our side. Quote the request id if you report it.', requestId));
+    return reply
+      .status(500)
+      .send(body('INTERNAL', 'Something went wrong on our side. Quote the request id if you report it.', requestId));
   });
 
-  app.setNotFoundHandler((request, reply) =>
-    reply.status(404).send(body('NOT_FOUND', 'No such route.', request.id)),
-  );
+  app.setNotFoundHandler((request, reply) => reply.status(404).send(body('NOT_FOUND', 'No such route.', request.id)));
 
   const routeDeps: RouteDeps = { ...deps, app };
   await app.register(healthRoutes(routeDeps));

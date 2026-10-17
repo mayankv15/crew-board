@@ -7,14 +7,17 @@ import { WebhookEventSchema, processWebhookEvent } from '../integration/webhook.
 export const webhookRoutes =
   ({ db, config }: RouteDeps): FastifyPluginAsync =>
   async (scope) => {
-    // Own encapsulated scope: only this route receives the body as raw bytes. The signature covers
-    // the exact bytes HR sent, so we must verify before (and instead of) trusting parsed JSON.
     scope.removeAllContentTypeParsers();
-    scope.addContentTypeParser('application/json', { parseAs: 'buffer', bodyLimit: 64 * 1024 }, (_req, raw, done) => done(null, raw));
+    scope.addContentTypeParser('application/json', { parseAs: 'buffer', bodyLimit: 64 * 1024 }, (_req, raw, done) =>
+      done(null, raw),
+    );
 
     scope.post(
       '/webhooks/hr',
-      { schema: { tags: ['webhooks'] }, config: { rateLimit: { max: config.RATE_LIMIT_WEBHOOK_MAX, timeWindow: '1 minute' } } },
+      {
+        schema: { tags: ['webhooks'] },
+        config: { rateLimit: { max: config.RATE_LIMIT_WEBHOOK_MAX, timeWindow: '1 minute' } },
+      },
       async (req, reply) => {
         const raw = req.body as Buffer;
         const header = (name: string) => {
@@ -29,10 +32,8 @@ export const webhookRoutes =
           rawBody: raw,
           nowSeconds: Math.floor(Date.now() / 1000),
         });
-        // One message for every kind of failure: never reveal which check failed.
         if (!valid) throw new AppError('INVALID_SIGNATURE', 'The webhook signature could not be verified.');
 
-        // Only after the signature passes do we parse the bytes.
         let json: unknown;
         try {
           json = JSON.parse(raw.toString('utf8'));

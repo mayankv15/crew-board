@@ -28,11 +28,13 @@ export function getAssignment(db: Db, id: string): Assignment | undefined {
 }
 
 export function isAssigned(db: Db, positionId: string, technicianId: string): boolean {
-  return db.prepare('SELECT 1 FROM assignments WHERE position_id = ? AND technician_id = ?').get(positionId, technicianId) !== undefined;
+  return (
+    db
+      .prepare('SELECT 1 FROM assignments WHERE position_id = ? AND technician_id = ?')
+      .get(positionId, technicianId) !== undefined
+  );
 }
 
-// Bookings of this technician that share at least one day with `range`, earliest first.
-// Overlap test: each range starts on or before the day the other ends (inclusive days).
 export function findOverlapping(db: Db, technicianId: string, range: DateRange): Conflict[] {
   const rows = db
     .prepare(
@@ -59,7 +61,6 @@ export function findOverlapping(db: Db, technicianId: string, range: DateRange):
   }));
 }
 
-// Every booking of this technician that ends on or after `from`; used to find the next free day.
 export function upcomingRanges(db: Db, technicianId: string, from: string): DateRange[] {
   const rows = db
     .prepare('SELECT start_date, end_date FROM assignments WHERE technician_id = ? AND end_date >= ?')
@@ -67,7 +68,6 @@ export function upcomingRanges(db: Db, technicianId: string, from: string): Date
   return rows.map((r) => ({ startDate: r.start_date, endDate: r.end_date }));
 }
 
-// Seats taken = assignments whose technician is still active at HR.
 export function seatsTaken(db: Db, positionId: string): number {
   return (
     db

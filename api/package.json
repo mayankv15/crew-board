@@ -1,0 +1,35 @@
+{
+  "name": "@crew-board/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../.env src/server.ts",
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "migrate": "tsx --env-file-if-exists=../.env src/cli/migrate.ts",
+    "seed": "tsx --env-file-if-exists=../.env src/cli/seed.ts",
+    "sync": "tsx --env-file-if-exists=../.env src/cli/sync.ts",
+    "webhook:test": "tsx --env-file-if-exists=../.env src/cli/webhook-test.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.1",
+    "@fastify/helmet": "13.2.0",
+    "@fastify/rate-limit": "11.2.1",
+    "@fastify/swagger": "9.9.2",
+    "@fastify/swagger-ui": "6.1.2",
+    "better-sqlite3": "13.0.3",
+    "fastify": "5.12.7",
+    "fastify-type-provider-zod": "7.0.0",
+    "zod": "4.6.7"
+  }
+}

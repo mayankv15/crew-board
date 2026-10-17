@@ -118,11 +118,15 @@ export const ConflictSchema = z.object({
 });
 export type Conflict = z.infer<typeof ConflictSchema>;
 
+export const TechnicianDetailSchema = TechnicianSchema.extend({ assignments: z.array(ConflictSchema) });
+export type TechnicianDetail = z.infer<typeof TechnicianDetailSchema>;
+
 export const CandidateQuery = PageQuery.extend({ q: text(80).optional() });
 export type CandidateQuery = z.infer<typeof CandidateQuery>;
 
 export const CandidateSchema = TechnicianSchema.extend({
   hasSkill: z.boolean(),
+  alreadyAssigned: z.boolean(),
   available: z.boolean(),
   conflict: ConflictSchema.nullable(),
 });

@@ -15,6 +15,7 @@
     "webhook:test": "tsx --env-file-if-exists=../.env src/cli/webhook-test.ts"
   },
   "devDependencies": {
+    "@fastify/swagger-ui": "6.1.2",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.19.2",
     "esbuild": "0.28.2",
@@ -26,7 +27,6 @@
     "@fastify/helmet": "13.2.0",
     "@fastify/rate-limit": "11.2.1",
     "@fastify/swagger": "9.9.2",
-    "@fastify/swagger-ui": "6.1.2",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.7",
     "fastify-type-provider-zod": "7.0.0",

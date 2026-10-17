@@ -1,5 +1,5 @@
 // Bundles the API, the sync CLI and the webhook test script, with the shared package inlined.
-// better-sqlite3 is native, so it stays external.
+// better-sqlite3 is native and swagger-ui is dev-only, so both stay external.
 import { build } from 'esbuild';
 
 await build({
@@ -10,6 +10,6 @@ await build({
   target: 'node24',
   format: 'esm',
   sourcemap: true,
-  external: ['better-sqlite3'],
+  external: ['better-sqlite3', '@fastify/swagger-ui'],
   banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
 });

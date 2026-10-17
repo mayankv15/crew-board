@@ -3,7 +3,6 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
-import swaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
@@ -65,7 +64,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     openapi: { info: { title: 'Crew Board API', version: '0.1.0' } },
     transform: jsonSchemaTransform,
   });
-  if (config.NODE_ENV !== 'production') await app.register(swaggerUi, { routePrefix: '/docs' });
+  if (config.NODE_ENV !== 'production') {
+    // Dev and test only: the Swagger UI reads its static files from disk, so it is loaded lazily,
+    // kept out of the production bundle, and the production image does not install it.
+    const { default: swaggerUi } = await import('@fastify/swagger-ui');
+    await app.register(swaggerUi, { routePrefix: '/docs' });
+  }
 
   // The one place that turns any failure into the one error shape.
   app.setErrorHandler((error, request, reply) => {

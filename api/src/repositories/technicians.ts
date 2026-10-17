@@ -45,7 +45,7 @@ export function skillsFor(db: Db, ids: string[]): Map<string, Skill[]> {
   return map;
 }
 
-export function toTechnician(row: TechnicianRow, skills: Skill[]): Technician {
+function toTechnician(row: TechnicianRow, skills: Skill[]): Technician {
   return {
     id: row.id,
     externalId: row.external_id,
@@ -64,9 +64,9 @@ const NAME_OR_SKILL_MATCH =
   "(t.name LIKE @q ESCAPE '\\' OR EXISTS (SELECT 1 FROM technician_skills s WHERE s.technician_id = t.id AND s.skill LIKE @q ESCAPE '\\'))";
 
 export function listTechnicians(db: Db, query: TechnicianQuery): Page<Technician> {
-  // Every fragment is a constant; values only ever travel as bound parameters.
   const where =
     ' WHERE (@skill IS NULL OR EXISTS (SELECT 1 FROM technician_skills s WHERE s.technician_id = t.id AND s.skill = @skill))' +
+    " AND (@location IS NULL OR t.city LIKE @location ESCAPE '\\' OR t.state LIKE @location ESCAPE '\\' OR t.country LIKE @location ESCAPE '\\')" +
     ' AND (@state IS NULL OR t.state = @state COLLATE NOCASE)' +
     ' AND (@city IS NULL OR t.city = @city COLLATE NOCASE)' +
     ' AND (@q IS NULL OR ' +
@@ -77,6 +77,7 @@ export function listTechnicians(db: Db, query: TechnicianQuery): Page<Technician
     ' AND a.start_date <= @availTo AND a.end_date >= @availFrom))';
   const params = {
     skill: query.skill ?? null,
+    location: query.location ? likePattern(query.location) : null,
     state: query.state ?? null,
     city: query.city ?? null,
     q: query.q ? likePattern(query.q) : null,
@@ -87,12 +88,23 @@ export function listTechnicians(db: Db, query: TechnicianQuery): Page<Technician
   const total = (db.prepare('SELECT COUNT(*) AS n FROM technicians t' + where).get(params) as { n: number }).n;
   const rows = db
     .prepare(
-      'SELECT ' + COLUMNS + ' FROM technicians t' + where +
+      'SELECT ' +
+        COLUMNS +
+        ' FROM technicians t' +
+        where +
         ' ORDER BY t.name COLLATE NOCASE, t.id LIMIT @limit OFFSET @offset',
     )
     .all({ ...params, limit: query.pageSize, offset: (query.page - 1) * query.pageSize }) as TechnicianRow[];
-  const skills = skillsFor(db, rows.map((r) => r.id));
-  return toPage(rows.map((r) => toTechnician(r, skills.get(r.id) ?? [])), total, query.page, query.pageSize);
+  const skills = skillsFor(
+    db,
+    rows.map((r) => r.id),
+  );
+  return toPage(
+    rows.map((r) => toTechnician(r, skills.get(r.id) ?? [])),
+    total,
+    query.page,
+    query.pageSize,
+  );
 }
 
 export function getTechnicianRow(db: Db, id: string): TechnicianRow | undefined {
@@ -101,11 +113,10 @@ export function getTechnicianRow(db: Db, id: string): TechnicianRow | undefined 
 
 export function getTechnicianByExternalId(db: Db, externalId: number): TechnicianRow | undefined {
   return db.prepare('SELECT ' + COLUMNS + ' FROM technicians t WHERE t.external_id = ?').get(externalId) as
-    | TechnicianRow
-    | undefined;
+    TechnicianRow | undefined;
 }
 
-export function getTechnician(db: Db, id: string): Technician | undefined {
+function getTechnician(db: Db, id: string): Technician | undefined {
   const row = getTechnicianRow(db, id);
   return row && toTechnician(row, skillsFor(db, [id]).get(id) ?? []);
 }
@@ -139,32 +150,50 @@ const toConflict = (r: SummaryRow): Conflict => ({
   endDate: r.end_date,
 });
 
-export function assignmentsOf(db: Db, technicianId: string): Conflict[] {
+function assignmentsOf(db: Db, technicianId: string): Conflict[] {
   const rows = db
     .prepare(ASSIGNMENT_SUMMARY + ' WHERE a.technician_id = ? ORDER BY a.start_date, a.id')
     .all(technicianId) as SummaryRow[];
   return rows.map(toConflict);
 }
 
-// Drawer data: active technicians, each with whether they have the skill, whether they are free for
-// the position's dates and, if not, which booking is in the way. Skilled and free people come first.
 export function listCandidates(db: Db, position: Position, query: CandidateQuery): Page<Candidate> {
   const BUSY =
     '(EXISTS (SELECT 1 FROM assignments a WHERE a.technician_id = t.id AND a.position_id <> @positionId' +
     ' AND a.start_date <= @end AND a.end_date >= @start))';
   const HAS_SKILL = '(EXISTS (SELECT 1 FROM technician_skills s WHERE s.technician_id = t.id AND s.skill = @skill))';
-  const where = ' WHERE t.active = 1 AND (@q IS NULL OR ' + NAME_OR_SKILL_MATCH + ')';
+  const ALREADY_HERE =
+    '(EXISTS (SELECT 1 FROM assignments h WHERE h.position_id = @positionId AND h.technician_id = t.id))';
+  const where =
+    ' WHERE t.active = 1 AND (@q IS NULL OR ' +
+    NAME_OR_SKILL_MATCH +
+    ')' +
+    ' AND (@assignable = 0 OR (' +
+    HAS_SKILL +
+    ' AND NOT ' +
+    BUSY +
+    ' AND NOT ' +
+    ALREADY_HERE +
+    '))';
   const params = {
     positionId: position.id,
     start: position.startDate,
     end: position.endDate,
     skill: position.skill,
     q: query.q ? likePattern(query.q) : null,
+    assignable: query.assignableOnly ? 1 : 0,
   };
-  const total = (db.prepare('SELECT COUNT(*) AS n FROM technicians t' + where).get({ q: params.q }) as { n: number }).n;
+  const total = (db.prepare('SELECT COUNT(*) AS n FROM technicians t' + where).get(params) as { n: number }).n;
   const rows = db
     .prepare(
-      'SELECT ' + COLUMNS + ', ' + HAS_SKILL + ' AS has_skill, ' + BUSY + ' AS busy FROM technicians t' + where +
+      'SELECT ' +
+        COLUMNS +
+        ', ' +
+        HAS_SKILL +
+        ' AS has_skill, ' +
+        BUSY +
+        ' AS busy FROM technicians t' +
+        where +
         ' ORDER BY has_skill DESC, busy ASC, t.name COLLATE NOCASE, t.id LIMIT @limit OFFSET @offset',
     )
     .all({ ...params, limit: query.pageSize, offset: (query.page - 1) * query.pageSize }) as (TechnicianRow & {
@@ -180,7 +209,10 @@ export function listCandidates(db: Db, position: Position, query: CandidateQuery
     const marks = placeholders(ids.length);
     const clashes = db
       .prepare(
-        ASSIGNMENT_SUMMARY + ' WHERE a.technician_id IN (' + marks + ') AND a.position_id <> ? ' +
+        ASSIGNMENT_SUMMARY +
+          ' WHERE a.technician_id IN (' +
+          marks +
+          ') AND a.position_id <> ? ' +
           'AND a.start_date <= ? AND a.end_date >= ? ORDER BY a.start_date, a.id',
       )
       .all(...ids, position.id, position.endDate, position.startDate) as SummaryRow[];

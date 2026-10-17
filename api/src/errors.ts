@@ -16,7 +16,6 @@ const STATUS: Record<ErrorCode, number> = {
   INTERNAL: 500,
 };
 
-// Thrown by services; the error handler in app.ts turns it into the one error body.
 export class AppError extends Error {
   readonly code: ErrorCode;
   readonly status: number;

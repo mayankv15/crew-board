@@ -1,5 +1,3 @@
-// Bundles the API, the sync CLI and the webhook test script, with the shared package inlined.
-// better-sqlite3 is native and swagger-ui is dev-only, so both stay external.
 import { build } from 'esbuild';
 
 await build({

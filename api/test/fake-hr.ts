@@ -1,13 +1,12 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-export type Behaviour = 'ok' | { status: number; headers?: Record<string, string> } | 'hang' | 'garbage';
+type Behaviour = 'ok' | { status: number; headers?: Record<string, string> } | 'hang' | 'garbage';
 
 export interface FakeHr {
   url: string;
   requests: { skip: number; limit: number; query: string }[];
   setUsers(users: unknown[]): void;
-  // Decide how each request behaves: gets the page offset and how many times that offset was requested so far.
   behave(fn: (skip: number, attempt: number) => Behaviour): void;
   close(): Promise<void>;
 }
@@ -27,7 +26,7 @@ export async function startFakeHr(initial: unknown[]): Promise<FakeHr> {
     attempts.set(skip, attempt + 1);
 
     const b = behave(skip, attempt);
-    if (b === 'hang') return; // never answers; the client must time out
+    if (b === 'hang') return;
     if (b === 'garbage') {
       res.writeHead(200, { 'content-type': 'application/json' });
       return void res.end('{"users": [');

@@ -12,7 +12,6 @@ const EnvSchema = z.object({
   HR_BASE_URL: z.url().default('https://dummyjson.com'),
   HR_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(5000),
   HR_MAX_RETRIES: z.coerce.number().int().min(0).max(6).default(3),
-  // Shared secret for webhook signatures. Required, no default, so a missing secret stops the boot.
   HR_WEBHOOK_SECRET: z.string().min(32, 'HR_WEBHOOK_SECRET must be at least 32 characters'),
   RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(100),
   RATE_LIMIT_SYNC_MAX: z.coerce.number().int().min(1).default(5),

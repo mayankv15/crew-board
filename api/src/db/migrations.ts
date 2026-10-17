@@ -1,5 +1,3 @@
-// Numbered migrations, applied once each at startup (the Flyway equivalent).
-// They live in TypeScript so the bundled server needs no files next to it.
 export const MIGRATIONS: { id: number; name: string; sql: string }[] = [
   {
     id: 1,
@@ -23,7 +21,6 @@ CREATE TABLE positions (
   created_at  TEXT NOT NULL,
   CHECK (end_date >= start_date)
 );
--- No "filled" column on purpose: it is derived from assignments on every read.
 
 CREATE TABLE technicians (
   id              TEXT PRIMARY KEY,
@@ -75,7 +72,6 @@ CREATE TABLE sync_runs (
   errors       TEXT NOT NULL DEFAULT '[]'
 );
 
--- The primary key is the replay guard: a second insert of the same event id fails.
 CREATE TABLE webhook_events (
   event_id     TEXT PRIMARY KEY,
   type         TEXT NOT NULL,

@@ -2,8 +2,7 @@ import { z } from 'zod';
 import { IsoDate, PageQuery, SkillSchema } from './common.ts';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
-
-// ---- Projects -------------------------------------------------------------
+const boolFromQuery = z.enum(['true', 'false']).transform((v) => v === 'true');
 
 export const CreateProjectBody = z.strictObject({
   name: text(120),
@@ -25,8 +24,6 @@ export const ProjectSchema = z.object({
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
-// ---- Positions ------------------------------------------------------------
-
 export const CreatePositionBody = z
   .strictObject({
     skill: SkillSchema,
@@ -40,8 +37,18 @@ export const CreatePositionBody = z
   });
 export type CreatePositionBody = z.infer<typeof CreatePositionBody>;
 
+export const POSITION_SORTS = ['start', 'start-desc', 'seats', 'project'] as const;
+export type PositionSort = (typeof POSITION_SORTS)[number];
+
 export const PositionQuery = PageQuery.extend({
   projectId: z.string().optional(),
+  q: text(80).optional(),
+  sort: z.enum(POSITION_SORTS).default('start'),
+  assignee: text(80).optional(),
+  staffing: z.enum(['none', 'some']).optional(),
+  needsReplacement: boolFromQuery.optional(),
+  minSeats: z.coerce.number().int().min(1).max(50).optional(),
+  startsWithin: z.coerce.number().int().min(1).max(365).optional(),
   skill: SkillSchema.optional(),
   from: IsoDate.optional(),
   to: IsoDate.optional(),
@@ -53,7 +60,6 @@ export const AssignedPersonSchema = z.object({
   assignmentId: z.string(),
   technicianId: z.string(),
   name: z.string(),
-  // false when HR deactivated them: the assignment is kept but no longer counts as a seat.
   active: z.boolean(),
 });
 export type AssignedPerson = z.infer<typeof AssignedPersonSchema>;
@@ -67,31 +73,40 @@ export const PositionSchema = z.object({
   endDate: IsoDate,
   headcount: z.number().int(),
   assigned: z.array(AssignedPersonSchema),
-  // Derived on every read, never stored. See api/src/repositories/positions.ts.
   seatsRemaining: z.number().int(),
   filled: z.boolean(),
 });
 export type Position = z.infer<typeof PositionSchema>;
 
-// ---- Technicians ----------------------------------------------------------
-
-const boolFromQuery = z.enum(['true', 'false']).transform((v) => v === 'true');
+export const PositionSummarySchema = z.object({
+  openPositions: z.number().int(),
+  filledPositions: z.number().int(),
+  seatsToFill: z.number().int(),
+  needsReplacement: z.number().int(),
+  startingWithin7: z.number().int(),
+  unstaffedStartingWithin14: z.number().int(),
+  partlyStaffed: z.number().int(),
+});
+export type PositionSummary = z.infer<typeof PositionSummarySchema>;
 
 export const TechnicianQuery = PageQuery.extend({
   skill: SkillSchema.optional(),
+  location: text(60).optional(),
   state: text(60).optional(),
   city: text(60).optional(),
   q: text(80).optional(),
   active: boolFromQuery.optional(),
   availableFrom: IsoDate.optional(),
   availableTo: IsoDate.optional(),
-}).refine((q) => (q.availableFrom === undefined) === (q.availableTo === undefined), {
-  path: ['availableTo'],
-  message: 'Give both availableFrom and availableTo, or neither',
-}).refine((q) => !q.availableFrom || !q.availableTo || q.availableTo >= q.availableFrom, {
-  path: ['availableTo'],
-  message: 'availableTo must be on or after availableFrom',
-});
+})
+  .refine((q) => (q.availableFrom === undefined) === (q.availableTo === undefined), {
+    path: ['availableTo'],
+    message: 'Give both availableFrom and availableTo, or neither',
+  })
+  .refine((q) => !q.availableFrom || !q.availableTo || q.availableTo >= q.availableFrom, {
+    path: ['availableTo'],
+    message: 'availableTo must be on or after availableFrom',
+  });
 export type TechnicianQuery = z.infer<typeof TechnicianQuery>;
 
 export const TechnicianSchema = z.object({
@@ -121,7 +136,10 @@ export type Conflict = z.infer<typeof ConflictSchema>;
 export const TechnicianDetailSchema = TechnicianSchema.extend({ assignments: z.array(ConflictSchema) });
 export type TechnicianDetail = z.infer<typeof TechnicianDetailSchema>;
 
-export const CandidateQuery = PageQuery.extend({ q: text(80).optional() });
+export const CandidateQuery = PageQuery.extend({
+  q: text(80).optional(),
+  assignableOnly: boolFromQuery.optional(),
+});
 export type CandidateQuery = z.infer<typeof CandidateQuery>;
 
 export const CandidateSchema = TechnicianSchema.extend({
@@ -131,8 +149,6 @@ export const CandidateSchema = TechnicianSchema.extend({
   conflict: ConflictSchema.nullable(),
 });
 export type Candidate = z.infer<typeof CandidateSchema>;
-
-// ---- Assignments ----------------------------------------------------------
 
 export const CreateAssignmentBody = z.strictObject({ technicianId: z.string().min(1).max(64) });
 export type CreateAssignmentBody = z.infer<typeof CreateAssignmentBody>;
@@ -146,8 +162,6 @@ export const AssignmentSchema = z.object({
   createdAt: z.string(),
 });
 export type Assignment = z.infer<typeof AssignmentSchema>;
-
-// ---- Sync -----------------------------------------------------------------
 
 export const SyncRunSchema = z.object({
   id: z.string(),

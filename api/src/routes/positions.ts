@@ -9,11 +9,12 @@ import {
   CreatePositionBody,
   PositionQuery,
   PositionSchema,
+  PositionSummarySchema,
   pageOf,
 } from '@crew-board/shared';
 import type { RouteDeps } from '../app.ts';
 import { notFound } from '../errors.ts';
-import { createPosition, getPosition, listPositions } from '../repositories/positions.ts';
+import { createPosition, getPosition, listPositions, summarizePositions } from '../repositories/positions.ts';
 import { getProject } from '../repositories/projects.ts';
 import { listCandidates } from '../repositories/technicians.ts';
 import { assignTechnician, unassign } from '../services/assignments.ts';
@@ -27,15 +28,25 @@ export const positionRoutes =
     const app = instance.withTypeProvider<ZodTypeProvider>();
     const tags = ['positions'];
 
-    app.get('/positions', { schema: { tags, querystring: PositionQuery, response: { 200: pageOf(PositionSchema) } } }, async (req) =>
-      listPositions(db, req.query),
+    app.get(
+      '/positions',
+      { schema: { tags, querystring: PositionQuery, response: { 200: pageOf(PositionSchema) } } },
+      async (req) => listPositions(db, req.query),
     );
 
-    app.get('/positions/:id', { schema: { tags, params: IdParams, response: { 200: PositionSchema } } }, async (req) => {
-      const position = getPosition(db, req.params.id);
-      if (!position) throw notFound('Position');
-      return position;
-    });
+    app.get('/positions/summary', { schema: { tags, response: { 200: PositionSummarySchema } } }, async () =>
+      summarizePositions(db),
+    );
+
+    app.get(
+      '/positions/:id',
+      { schema: { tags, params: IdParams, response: { 200: PositionSchema } } },
+      async (req) => {
+        const position = getPosition(db, req.params.id);
+        if (!position) throw notFound('Position');
+        return position;
+      },
+    );
 
     app.post(
       '/projects/:id/positions',
@@ -62,8 +73,12 @@ export const positionRoutes =
       async (req, reply) => reply.status(201).send(assignTechnician(db, req.params.id, req.body.technicianId)),
     );
 
-    app.delete('/positions/:id/assignments/:assignmentId', { schema: { tags, params: AssignmentParams } }, async (req, reply) => {
-      unassign(db, req.params.id, req.params.assignmentId);
-      return reply.status(204).send();
-    });
+    app.delete(
+      '/positions/:id/assignments/:assignmentId',
+      { schema: { tags, params: AssignmentParams } },
+      async (req, reply) => {
+        unassign(db, req.params.id, req.params.assignmentId);
+        return reply.status(204).send();
+      },
+    );
   };

@@ -46,23 +46,31 @@ export function listRuns(db: Db, limit: number): SyncRun[] {
   return rows.map(toRun);
 }
 
-// Single flight: the check and the insert happen in one write transaction, so two triggers at the
-// same moment cannot both start a run.
 export function createRun(db: Db, trigger: 'api' | 'cli'): SyncRun {
-  return db.transaction((): SyncRun => {
-    const running = db.prepare("SELECT id FROM sync_runs WHERE status = 'running'").get() as { id: string } | undefined;
-    if (running) {
-      throw new AppError('SYNC_IN_PROGRESS', 'A sync is already running. Wait for it to finish, then try again.', {
-        runId: running.id,
-      });
-    }
-    const id = randomUUID();
-    db.prepare("INSERT INTO sync_runs (id, trigger, status, started_at) VALUES (?, ?, 'running', ?)").run(id, trigger, nowIso());
-    return getRun(db, id)!;
-  }).immediate();
+  return db
+    .transaction((): SyncRun => {
+      const running = db.prepare("SELECT id FROM sync_runs WHERE status = 'running'").get() as
+        { id: string } | undefined;
+      if (running) {
+        throw new AppError('SYNC_IN_PROGRESS', 'A sync is already running. Wait for it to finish, then try again.', {
+          runId: running.id,
+        });
+      }
+      const id = randomUUID();
+      db.prepare("INSERT INTO sync_runs (id, trigger, status, started_at) VALUES (?, ?, 'running', ?)").run(
+        id,
+        trigger,
+        nowIso(),
+      );
+      return getRun(db, id)!;
+    })
+    .immediate();
 }
 
-export type RunProgress = Pick<SyncRun, 'pagesDone' | 'pagesTotal' | 'created' | 'updated' | 'unchanged' | 'deactivated' | 'failed' | 'errors'>;
+export type RunProgress = Pick<
+  SyncRun,
+  'pagesDone' | 'pagesTotal' | 'created' | 'updated' | 'unchanged' | 'deactivated' | 'failed' | 'errors'
+>;
 
 export function saveProgress(db: Db, id: string, p: RunProgress, finish?: SyncRun['status']): void {
   db.prepare(
@@ -72,13 +80,21 @@ export function saveProgress(db: Db, id: string, p: RunProgress, finish?: SyncRu
   ).run({ id, ...p, errors: JSON.stringify(p.errors), status: finish ?? null, finishedAt: nowIso() });
 }
 
-// A run still marked "running" at startup belongs to a process that died. Close it so the single
-// flight guard does not block every future sync.
 export function failInterruptedRuns(db: Db): number {
-  const stale = db.prepare("SELECT id, errors FROM sync_runs WHERE status = 'running'").all() as { id: string; errors: string }[];
+  const stale = db.prepare("SELECT id, errors FROM sync_runs WHERE status = 'running'").all() as {
+    id: string;
+    errors: string;
+  }[];
   for (const r of stale) {
-    const errors = [...(JSON.parse(r.errors) as SyncRun['errors']), { scope: 'run', message: 'Interrupted: the server stopped before this run finished.' }];
-    db.prepare("UPDATE sync_runs SET status = 'failed', finished_at = ?, errors = ? WHERE id = ?").run(nowIso(), JSON.stringify(errors), r.id);
+    const errors = [
+      ...(JSON.parse(r.errors) as SyncRun['errors']),
+      { scope: 'run', message: 'Interrupted: the server stopped before this run finished.' },
+    ];
+    db.prepare("UPDATE sync_runs SET status = 'failed', finished_at = ?, errors = ? WHERE id = ?").run(
+      nowIso(),
+      JSON.stringify(errors),
+      r.id,
+    );
   }
   return stale.length;
 }

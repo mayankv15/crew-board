@@ -25,20 +25,31 @@ const event = (over: Record<string, unknown> = {}) => ({
   data: hrUser(42),
   ...over,
 });
-const post = (payload: string, headers = signedHeaders(payload)) => app.inject({ method: 'POST', url: '/webhooks/hr', payload, headers });
+const post = (payload: string, headers = signedHeaders(payload)) =>
+  app.inject({ method: 'POST', url: '/webhooks/hr', payload, headers });
 const json = (res: { body: string }) => JSON.parse(res.body);
-const row = (externalId: number) => db.prepare('SELECT * FROM technicians WHERE external_id = ?').get(externalId) as Record<string, unknown> | undefined;
+const row = (externalId: number) =>
+  db.prepare('SELECT * FROM technicians WHERE external_id = ?').get(externalId) as Record<string, unknown> | undefined;
 
 describe('signature check', () => {
   const raw = Buffer.from('{"a":1}');
   const now = 1_800_000_000;
   const ok = (over: object = {}) =>
-    verifySignature({ secret: SECRET, timestamp: String(now), signature: signPayload(SECRET, String(now), raw), rawBody: raw, nowSeconds: now, ...over });
+    verifySignature({
+      secret: SECRET,
+      timestamp: String(now),
+      signature: signPayload(SECRET, String(now), raw),
+      rawBody: raw,
+      nowSeconds: now,
+      ...over,
+    });
 
   it('accepts a correct signature', () => expect(ok()).toBe(true));
-  it('rejects the wrong secret', () => expect(ok({ signature: signPayload('x'.repeat(40), String(now), raw) })).toBe(false));
+  it('rejects the wrong secret', () =>
+    expect(ok({ signature: signPayload('x'.repeat(40), String(now), raw) })).toBe(false));
   it('rejects a tampered body', () => expect(ok({ rawBody: Buffer.from('{"a":2}') })).toBe(false));
-  it('rejects a changed timestamp (it is part of what is signed)', () => expect(ok({ timestamp: String(now + 1) })).toBe(false));
+  it('rejects a changed timestamp (it is part of what is signed)', () =>
+    expect(ok({ timestamp: String(now + 1) })).toBe(false));
   it('rejects an old timestamp, and a far-future one', () => {
     const old = String(now - 301);
     expect(ok({ timestamp: old, signature: signPayload(SECRET, old, raw) })).toBe(false);
@@ -49,9 +60,12 @@ describe('signature check', () => {
     const near = String(now - 299);
     expect(ok({ timestamp: near, signature: signPayload(SECRET, near, raw) })).toBe(true);
   });
-  it.each([undefined, '', 'sha256=', 'sha256=zz', 'md5=abc', `sha256=${'a'.repeat(63)}`, `sha256=${'A'.repeat(64)}`])('rejects a malformed signature %j', (signature) => {
-    expect(ok({ signature })).toBe(false);
-  });
+  it.each([undefined, '', 'sha256=', 'sha256=zz', 'md5=abc', `sha256=${'a'.repeat(63)}`, `sha256=${'A'.repeat(64)}`])(
+    'rejects a malformed signature %j',
+    (signature) => {
+      expect(ok({ signature })).toBe(false);
+    },
+  );
   it('rejects a missing or non-numeric timestamp', () => {
     expect(ok({ timestamp: undefined })).toBe(false);
     expect(ok({ timestamp: 'abc' })).toBe(false);
@@ -62,7 +76,10 @@ describe('POST /webhooks/hr: authentication', () => {
   it('answers every kind of bad signature identically with 401 INVALID_SIGNATURE', async () => {
     const payload = body(event());
     const cases = [
-      { ...signedHeaders(payload), 'x-hr-signature': signPayload('y'.repeat(40), String(Math.floor(Date.now() / 1000)), payload) },
+      {
+        ...signedHeaders(payload),
+        'x-hr-signature': signPayload('y'.repeat(40), String(Math.floor(Date.now() / 1000)), payload),
+      },
       signedHeaders(payload, { timestamp: Math.floor(Date.now() / 1000) - 3600 }),
       signedHeaders(payload, { timestamp: Math.floor(Date.now() / 1000) + 3600 }),
       { 'content-type': 'application/json' },
@@ -94,14 +111,21 @@ describe('POST /webhooks/hr: authentication', () => {
 
   it('rejects a non-JSON content type', async () => {
     const payload = body(event());
-    const res = await app.inject({ method: 'POST', url: '/webhooks/hr', payload, headers: { ...signedHeaders(payload), 'content-type': 'text/plain' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/webhooks/hr',
+      payload,
+      headers: { ...signedHeaders(payload), 'content-type': 'text/plain' },
+    });
     expect(res.statusCode).toBe(400);
   });
 });
 
 describe('POST /webhooks/hr: events', () => {
   it('technician.updated creates a new technician with derived skills', async () => {
-    const res = await post(body(event({ data: hrUser(42, { company: { department: 'Services', title: 'Engineer' } }) })));
+    const res = await post(
+      body(event({ data: hrUser(42, { company: { department: 'Services', title: 'Engineer' } }) })),
+    );
     expect(res.statusCode).toBe(200);
     expect(json(res)).toEqual({ status: 'processed' });
     expect(row(42)).toMatchObject({ name: 'First42 Last42', active: 1 });
@@ -110,9 +134,19 @@ describe('POST /webhooks/hr: events', () => {
 
   it('technician.updated changes an existing technician in place', async () => {
     const tech = makeTechnician(db, { externalId: 42, name: 'Old Name' });
-    const res = await post(body(event({ occurredAt: new Date(Date.now() + 1000).toISOString(), data: hrUser(42, { firstName: 'New', lastName: 'Name' }) })));
+    const res = await post(
+      body(
+        event({
+          occurredAt: new Date(Date.now() + 1000).toISOString(),
+          data: hrUser(42, { firstName: 'New', lastName: 'Name' }),
+        }),
+      ),
+    );
     expect(json(res)).toEqual({ status: 'processed' });
-    expect(db.prepare('SELECT id, name FROM technicians WHERE external_id = 42').get()).toEqual({ id: tech.id, name: 'New Name' });
+    expect(db.prepare('SELECT id, name FROM technicians WHERE external_id = 42').get()).toEqual({
+      id: tech.id,
+      name: 'New Name',
+    });
     expect(db.prepare('SELECT COUNT(*) AS n FROM technicians').get()).toEqual({ n: 1 });
   });
 
@@ -123,7 +157,15 @@ describe('POST /webhooks/hr: events', () => {
     assignTechnician(db, position.id, tech.id);
     expect(getPosition(db, position.id)?.filled).toBe(true);
 
-    const res = await post(body(event({ type: 'technician.deactivated', occurredAt: new Date(Date.now() + 1000).toISOString(), data: { id: 42 } })));
+    const res = await post(
+      body(
+        event({
+          type: 'technician.deactivated',
+          occurredAt: new Date(Date.now() + 1000).toISOString(),
+          data: { id: 42 },
+        }),
+      ),
+    );
     expect(json(res)).toEqual({ status: 'processed' });
     expect(row(42)).toMatchObject({ active: 0, deactivated_by: 'webhook' });
     expect(row(42)?.deactivated_at).toBeTruthy();
@@ -136,8 +178,18 @@ describe('POST /webhooks/hr: events', () => {
     const position = makePosition(db, project.id, { headcount: 1 });
     const tech = makeTechnician(db, { externalId: 42 });
     assignTechnician(db, position.id, tech.id);
-    await post(body(event({ type: 'technician.deactivated', occurredAt: new Date(Date.now() + 1000).toISOString(), data: { id: 42 } })));
-    const res = await post(body(event({ occurredAt: new Date(Date.now() + 2000).toISOString(), data: hrUser(42, { active: true }) })));
+    await post(
+      body(
+        event({
+          type: 'technician.deactivated',
+          occurredAt: new Date(Date.now() + 1000).toISOString(),
+          data: { id: 42 },
+        }),
+      ),
+    );
+    const res = await post(
+      body(event({ occurredAt: new Date(Date.now() + 2000).toISOString(), data: hrUser(42, { active: true }) })),
+    );
     expect(json(res)).toEqual({ status: 'processed' });
     expect(row(42)).toMatchObject({ active: 1, deactivated_by: null });
     expect(getPosition(db, position.id)?.filled).toBe(true);
@@ -167,7 +219,12 @@ describe('POST /webhooks/hr: events', () => {
   });
 
   it('400 with field details for a signed but invalid event', async () => {
-    for (const bad of [{ id: 'short', type: 'technician.updated' }, event({ type: 'technician.exploded' }), event({ data: { id: 'x' } }), { ...event(), extra: 1, id: 'has spaces!!' }]) {
+    for (const bad of [
+      { id: 'short', type: 'technician.updated' },
+      event({ type: 'technician.exploded' }),
+      event({ data: { id: 'x' } }),
+      { ...event(), extra: 1, id: 'has spaces!!' },
+    ]) {
       const res = await post(body(bad));
       expect(res.statusCode).toBe(400);
       expect(json(res).error.code).toBe('VALIDATION_ERROR');

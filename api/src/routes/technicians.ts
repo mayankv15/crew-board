@@ -12,13 +12,19 @@ export const technicianRoutes =
     const app = instance.withTypeProvider<ZodTypeProvider>();
     const tags = ['technicians'];
 
-    app.get('/technicians', { schema: { tags, querystring: TechnicianQuery, response: { 200: pageOf(TechnicianSchema) } } }, async (req) =>
-      listTechnicians(db, req.query),
+    app.get(
+      '/technicians',
+      { schema: { tags, querystring: TechnicianQuery, response: { 200: pageOf(TechnicianSchema) } } },
+      async (req) => listTechnicians(db, req.query),
     );
 
-    app.get('/technicians/:id', { schema: { tags, params: IdParams, response: { 200: TechnicianDetailSchema } } }, async (req) => {
-      const technician = getTechnicianDetail(db, req.params.id);
-      if (!technician) throw notFound('Technician');
-      return technician;
-    });
+    app.get(
+      '/technicians/:id',
+      { schema: { tags, params: IdParams, response: { 200: TechnicianDetailSchema } } },
+      async (req) => {
+        const technician = getTechnicianDetail(db, req.params.id);
+        if (!technician) throw notFound('Technician');
+        return technician;
+      },
+    );
   };

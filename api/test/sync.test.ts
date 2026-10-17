@@ -44,21 +44,43 @@ afterEach(async () => {
 describe('sync: idempotency', () => {
   it('creates everyone once, then a second run changes nothing', async () => {
     const first = await runSync(client());
-    expect(first).toMatchObject({ status: 'succeeded', created: 25, updated: 0, unchanged: 0, failed: 0, pagesDone: 3, pagesTotal: 3 });
+    expect(first).toMatchObject({
+      status: 'succeeded',
+      created: 25,
+      updated: 0,
+      unchanged: 0,
+      failed: 0,
+      pagesDone: 3,
+      pagesTotal: 3,
+    });
 
     const before = db.prepare('SELECT * FROM technicians ORDER BY external_id').all();
     const second = await runSync(client());
-    expect(second).toMatchObject({ status: 'succeeded', created: 0, updated: 0, unchanged: 25, failed: 0, deactivated: 0 });
+    expect(second).toMatchObject({
+      status: 'succeeded',
+      created: 0,
+      updated: 0,
+      unchanged: 25,
+      failed: 0,
+      deactivated: 0,
+    });
     expect(db.prepare('SELECT * FROM technicians ORDER BY external_id').all()).toEqual(before);
     expect(count('SELECT COUNT(*) AS n FROM technicians')).toBe(25);
   });
 
   it('updates only what changed in HR', async () => {
     await runSync(client());
-    hrServer.setUsers(users(25).map((u) => (u.id === 7 ? hrUser(7, { address: { city: 'Dallas', state: 'Texas', country: 'United States' } }) : u)));
+    hrServer.setUsers(
+      users(25).map((u) =>
+        u.id === 7 ? hrUser(7, { address: { city: 'Dallas', state: 'Texas', country: 'United States' } }) : u,
+      ),
+    );
     const run = await runSync(client());
     expect(run).toMatchObject({ created: 0, updated: 1, unchanged: 24 });
-    expect(db.prepare('SELECT city, state FROM technicians WHERE external_id = 7').get()).toEqual({ city: 'Dallas', state: 'Texas' });
+    expect(db.prepare('SELECT city, state FROM technicians WHERE external_id = 7').get()).toEqual({
+      city: 'Dallas',
+      state: 'Texas',
+    });
   });
 
   it('keeps assignments attached when a technician is updated', async () => {
@@ -69,18 +91,25 @@ describe('sync: idempotency', () => {
     const assignment = assignTechnician(db, position.id, tech.id);
     hrServer.setUsers(users(25).map((u) => (u.id === 3 ? hrUser(3, { firstName: 'Renamed' }) : u)));
     await runSync(client());
-    expect(db.prepare('SELECT technician_id FROM assignments WHERE id = ?').get(assignment.id)).toEqual({ technician_id: tech.id });
+    expect(db.prepare('SELECT technician_id FROM assignments WHERE id = ?').get(assignment.id)).toEqual({
+      technician_id: tech.id,
+    });
     expect(db.prepare('SELECT name FROM technicians WHERE id = ?').get(tech.id)).toEqual({ name: 'Renamed Last3' });
   });
 });
 
 describe('sync: data minimisation', () => {
   it('asks only for the fields it needs and never stores sensitive ones', async () => {
-    hrServer.setUsers([hrUser(1, { ssn: '123-45-6789', password: 'hunter2', bank: { cardNumber: '4111111111111111' }, ip: '10.1.2.3' })]);
+    hrServer.setUsers([
+      hrUser(1, { ssn: '123-45-6789', password: 'hunter2', bank: { cardNumber: '4111111111111111' }, ip: '10.1.2.3' }),
+    ]);
     await runSync(client());
     expect(hrServer.requests[0]?.query).toContain('select=id%2CfirstName%2ClastName%2Ccompany%2Caddress');
-    const stored = JSON.stringify(db.prepare('SELECT * FROM technicians').all()) + JSON.stringify(db.prepare('SELECT * FROM sync_runs').all());
-    for (const secret of ['123-45-6789', 'hunter2', '4111111111111111', '10.1.2.3']) expect(stored).not.toContain(secret);
+    const stored =
+      JSON.stringify(db.prepare('SELECT * FROM technicians').all()) +
+      JSON.stringify(db.prepare('SELECT * FROM sync_runs').all());
+    for (const secret of ['123-45-6789', 'hunter2', '4111111111111111', '10.1.2.3'])
+      expect(stored).not.toContain(secret);
   });
 
   it('derives skills from department and title, and tolerates unknown departments', async () => {
@@ -101,8 +130,9 @@ describe('sync: slow and failing partner', () => {
   });
 
   it('honours Retry-After on 429', async () => {
-    hrServer.behave((skip, attempt) => (skip === 0 && attempt === 0 ? { status: 429, headers: { 'retry-after': '3' } } : 'ok'));
-    // Waits at least what the partner asked for, bounded at twice the backoff cap.
+    hrServer.behave((skip, attempt) =>
+      skip === 0 && attempt === 0 ? { status: 429, headers: { 'retry-after': '3' } } : 'ok',
+    );
     const run = await runSync(client({ maxDelayMs: 4000 }));
     expect(run.status).toBe('succeeded');
     expect(sleeps[0]).toBeGreaterThanOrEqual(3000);
@@ -170,10 +200,12 @@ describe('sync: deactivation of people missing from HR', () => {
     hrServer.setUsers(users(24));
     const run = await runSync(client());
     expect(run).toMatchObject({ status: 'succeeded', deactivated: 1 });
-    expect(db.prepare('SELECT active, deactivated_by FROM technicians WHERE external_id = 25').get()).toEqual({ active: 0, deactivated_by: 'sync' });
+    expect(db.prepare('SELECT active, deactivated_by FROM technicians WHERE external_id = 25').get()).toEqual({
+      active: 0,
+      deactivated_by: 'sync',
+    });
     expect(count('SELECT COUNT(*) AS n FROM assignments')).toBe(1);
 
-    // and if they reappear in HR the sync brought them back
     hrServer.setUsers(users(25));
     await runSync(client());
     expect(db.prepare('SELECT active FROM technicians WHERE external_id = 25').get()).toEqual({ active: 1 });
@@ -234,7 +266,9 @@ describe('sync: runs', () => {
   });
 
   it('closes runs left "running" by a process that died', () => {
-    db.prepare("INSERT INTO sync_runs (id, trigger, status, started_at) VALUES ('old', 'api', 'running', '2026-01-01T00:00:00Z')").run();
+    db.prepare(
+      "INSERT INTO sync_runs (id, trigger, status, started_at) VALUES ('old', 'api', 'running', '2026-01-01T00:00:00Z')",
+    ).run();
     expect(failInterruptedRuns(db)).toBe(1);
     expect(getRun(db, 'old')).toMatchObject({ status: 'failed' });
     expect(getRun(db, 'old')?.errors[0]?.message).toContain('Interrupted');

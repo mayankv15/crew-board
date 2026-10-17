@@ -16,10 +16,15 @@ export function openDatabase(path: string): Db {
   return db;
 }
 
-export function migrate(db: Db): number {
-  db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)');
+function migrate(db: Db): number {
+  db.exec(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)',
+  );
   const applied = new Set(
-    db.prepare('SELECT id FROM schema_migrations').all().map((r) => (r as { id: number }).id),
+    db
+      .prepare('SELECT id FROM schema_migrations')
+      .all()
+      .map((r) => (r as { id: number }).id),
   );
   let count = 0;
   for (const m of MIGRATIONS) {

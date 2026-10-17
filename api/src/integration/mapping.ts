@@ -2,9 +2,6 @@ import type { Skill } from '@crew-board/shared';
 import { z } from 'zod';
 import type { TechnicianInput } from '../repositories/upsert.ts';
 
-// What we accept from the HR system. z.object strips every key not listed here, so the sensitive
-// fields dummyjson returns (password, ssn, ein, bank, crypto, ip, macAddress...) are dropped at the
-// boundary and can never reach the database or the logs.
 const short = (max: number) => z.string().trim().max(max);
 
 export const HrUserSchema = z.object({
@@ -16,10 +13,7 @@ export const HrUserSchema = z.object({
 });
 export type HrUser = z.infer<typeof HrUserSchema>;
 
-// HR has no skills field, so skills are derived. The department gives the main skill; the job title
-// can add more. A department we do not know gives no skill: the person is stored and visible but
-// cannot be assigned, so a new HR value never breaks a sync.
-export const DEPARTMENT_SKILLS: Readonly<Record<string, Skill>> = {
+const DEPARTMENT_SKILLS: Readonly<Record<string, Skill>> = {
   Engineering: 'network-engineering',
   'Research and Development': 'server-installation',
   Services: 'fibre-cabling',

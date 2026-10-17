@@ -29,7 +29,12 @@ describe('booking rule: overlapping dates', () => {
     const position = makePosition(db, projectId);
     const tech = makeTechnician(db);
     const a = assignTechnician(db, position.id, tech.id);
-    expect(a).toMatchObject({ positionId: position.id, technicianId: tech.id, startDate: '2026-11-03', endDate: '2026-11-14' });
+    expect(a).toMatchObject({
+      positionId: position.id,
+      technicianId: tech.id,
+      startDate: '2026-11-03',
+      endDate: '2026-11-14',
+    });
   });
 
   it('rejects an overlapping assignment with a message naming the clash and the next free day', () => {

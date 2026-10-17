@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export interface HrPage {
+interface HrPage {
   users: unknown[];
   total: number;
 }
@@ -9,7 +9,7 @@ export interface HrClient {
   fetchPage(skip: number, limit: number): Promise<HrPage>;
 }
 
-export class HrError extends Error {
+class HrError extends Error {
   readonly retryable: boolean;
   readonly retryAfterMs: number | undefined;
 
@@ -32,14 +32,10 @@ export interface HttpHrClientOptions {
   random?: () => number;
 }
 
-// Only the envelope is checked here. Each user is validated on its own in the sync, so one bad
-// record cannot fail a whole page.
 const Envelope = z.object({ users: z.array(z.unknown()), total: z.number().int().min(0) });
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// Exponential backoff with "equal jitter": half fixed, half random, so many clients that failed
-// together do not all retry at the same instant.
 export function backoffDelay(attempt: number, baseMs: number, capMs: number, random: () => number): number {
   const exp = Math.min(capMs, baseMs * 2 ** attempt);
   return Math.round(exp / 2 + random() * (exp / 2));
@@ -60,11 +56,9 @@ export function createHttpHrClient(options: HttpHrClientOptions): HrClient {
   const random = options.random ?? Math.random;
 
   async function attemptOnce(skip: number, limit: number): Promise<HrPage> {
-    // The host comes from configuration only, never from a request.
     const url = new URL('/users', baseUrl);
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('skip', String(skip));
-    // Ask only for what we use. The Zod schema is the second line of defence.
     url.searchParams.set('select', 'id,firstName,lastName,company,address');
 
     let res: Response;

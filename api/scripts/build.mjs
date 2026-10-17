@@ -1,9 +1,10 @@
-// Bundles the API and the shared package into one file. better-sqlite3 is native, so it stays external.
+// Bundles the API, the sync CLI and the webhook test script, with the shared package inlined.
+// better-sqlite3 is native, so it stays external.
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['src/server.ts'],
-  outfile: 'dist/server.js',
+  entryPoints: { server: 'src/server.ts', sync: 'src/cli/sync.ts', 'webhook-test': 'src/cli/webhook-test.ts' },
+  outdir: 'dist',
   bundle: true,
   platform: 'node',
   target: 'node24',

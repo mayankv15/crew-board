@@ -213,7 +213,7 @@ describe('sync: runs', () => {
     await runSync(client());
     const runs = listRuns(db, 10);
     expect(runs).toHaveLength(2);
-    expect(runs[0]?.startedAt >= (runs[1]?.startedAt ?? '')).toBe(true);
+    expect((runs[0]?.startedAt ?? '') >= (runs[1]?.startedAt ?? '')).toBe(true);
     expect(runs[0]).toMatchObject({ trigger: 'cli', status: 'succeeded' });
     expect(runs[0]?.finishedAt).toBeTruthy();
   });

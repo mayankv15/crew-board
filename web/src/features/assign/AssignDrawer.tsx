@@ -142,7 +142,6 @@ export function AssignDrawer({ position, onClose }: Props) {
             placeholder="For example Priya or fibre"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            helperText="Arrow keys move between people, Enter assigns."
             slotProps={{
               input: {
                 startAdornment: (
@@ -165,11 +164,6 @@ export function AssignDrawer({ position, onClose }: Props) {
             }
             label={<Typography variant="body2">Only people who can take this position</Typography>}
           />
-          {search.trim() !== '' ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 0.5 }}>
-              Searching shows everyone, so you can see why someone cannot be assigned.
-            </Typography>
-          ) : null}
         </Box>
 
         <Box sx={{ px: 2, py: 0.75, flex: 'none', borderBottom: 1, borderColor: 'divider' }}>

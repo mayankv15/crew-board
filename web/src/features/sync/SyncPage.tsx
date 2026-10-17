@@ -191,7 +191,6 @@ export function SyncPage({ pollMs: pollWhileRunning = 1000 }: { pollMs?: number 
       <PageHeader
         id="sync-title"
         title="HR sync"
-        subtitle="The HR system is the source of truth for who exists. Each run pulls every technician and updates ours without creating duplicates."
         actions={
           <Button
             variant="contained"

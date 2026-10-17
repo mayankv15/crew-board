@@ -1,4 +1,4 @@
-import { Chip, Stack, Typography } from '@mui/material';
+import { Chip, Stack } from '@mui/material';
 import type { PositionSummary } from '@crew-board/shared';
 import type { BoardFilters } from '../../shared/api.ts';
 import type { Tab } from './boardParams.ts';
@@ -20,9 +20,6 @@ export function QuickViews({ summary, tab, filters, onPick }: Props) {
       aria-label="Quick views"
       sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}
     >
-      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mr: 0.5 }}>
-        Quick views
-      </Typography>
       {QUICK_VIEWS.map((view) => {
         const active = isActiveView(view, tab, filters);
         const count = summary ? view.count(summary) : undefined;

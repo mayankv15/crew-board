@@ -217,9 +217,6 @@ function FilterButton({ filters, onFilters }: { filters: BoardFilters; onFilters
                 sx={{ ...fieldSx, flex: 1 }}
               />
             </Stack>
-            <Typography variant="caption" color="text.secondary">
-              Shows positions that run at any time in this period.
-            </Typography>
             {rangeInvalid ? (
               <Typography role="alert" variant="body2" color="error" sx={{ fontWeight: 600 }}>
                 The end date is before the start date, so nothing can match.

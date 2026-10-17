@@ -416,7 +416,6 @@ describe('a long technician list stays short and pinned', () => {
     await waitFor(() => expect(urls.at(-1)?.searchParams.get('q')).toBe('person 07'));
     expect(urls.at(-1)?.searchParams.has('assignableOnly')).toBe(false);
     expect(within(dialog).getByRole('switch', { name: /Only people who can take this position/ })).toBeDisabled();
-    expect(within(dialog).getByText(/Searching shows everyone/)).toBeInTheDocument();
   });
 
   it('offers to show everyone when nobody can take the position', async () => {

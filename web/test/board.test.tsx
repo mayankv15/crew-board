@@ -58,13 +58,11 @@ describe('project board', () => {
     expect(within(panel).getByRole('button', { name: /^Manage people on Dublin Hall B/ })).toBeInTheDocument();
   });
 
-  it('shows exact figures for the whole board in the pinned header', async () => {
+  it('shows the exact seats still to fill in the pinned header', async () => {
     server.use(positionsHandler(positions));
     renderApp();
     await screen.findByText('Frankfurt DC-2');
-    await waitFor(() => expect(screen.getByText('open positions').previousSibling).toHaveTextContent('1'));
-    expect(screen.getByText('seats to fill').previousSibling).toHaveTextContent('1');
-    expect(screen.getByText('filled positions').previousSibling).toHaveTextContent('1');
+    await waitFor(() => expect(screen.getByText('seats to fill').previousSibling).toHaveTextContent('1'));
   });
 
   it('shows an empty state when there are no positions at all', async () => {

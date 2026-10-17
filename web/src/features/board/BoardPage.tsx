@@ -1,6 +1,4 @@
 import EventSeatOutlinedIcon from '@mui/icons-material/EventSeatOutlined';
-import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
-import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
 import { Box, Button, Fade, LinearProgress, Stack } from '@mui/material';
 import type { GridPaginationModel } from '@mui/x-data-grid';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -207,22 +205,10 @@ export function BoardPage() {
         actions={
           <Stack direction="row" useFlexGap sx={{ gap: 1, flexWrap: 'wrap' }}>
             <StatPill
-              label="open positions"
-              value={summary.data?.openPositions ?? '–'}
-              tone="primary"
-              icon={<PendingActionsOutlinedIcon fontSize="small" />}
-            />
-            <StatPill
               label="seats to fill"
               value={summary.data?.seatsToFill ?? '–'}
               tone="warning"
               icon={<EventSeatOutlinedIcon fontSize="small" />}
-            />
-            <StatPill
-              label="filled positions"
-              value={summary.data?.filledPositions ?? '–'}
-              tone="secondary"
-              icon={<FactCheckOutlinedIcon fontSize="small" />}
             />
           </Stack>
         }

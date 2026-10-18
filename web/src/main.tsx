@@ -9,9 +9,10 @@ import { BrowserRouter } from 'react-router';
 import { App } from './app/App.tsx';
 import { makeStore } from './app/store.ts';
 import { cspNonce } from './shared/csp.ts';
+import { throttledFocusListeners } from './shared/focusListeners.ts';
 
 const store = makeStore();
-setupListeners(store.dispatch);
+setupListeners(store.dispatch, throttledFocusListeners());
 
 const nonce = cspNonce();
 const cache = createCache({ key: 'mui', prepend: true, ...(nonce ? { nonce } : {}) });

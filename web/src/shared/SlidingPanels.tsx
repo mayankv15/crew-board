@@ -1,6 +1,6 @@
 import { Box } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 export interface Panel {
   id: string;
@@ -8,8 +8,15 @@ export interface Panel {
   content: ReactNode;
 }
 
+/**
+ * Every panel's wrapper is always in the page, so tabs can point at it with aria-controls, but its content is
+ * only mounted once the panel has been shown. After that it stays mounted, so the panel keeps its state and
+ * slides back without a reload. A panel nobody opens never loads its code or its data.
+ */
 export function SlidingPanels({ index, panels }: { index: number; panels: Panel[] }) {
   const theme = useTheme();
+  const [shown, setShown] = useState<ReadonlySet<number>>(() => new Set([index]));
+  if (!shown.has(index)) setShown(new Set(shown).add(index));
   return (
     <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
       <Box
@@ -33,7 +40,7 @@ export function SlidingPanels({ index, panels }: { index: number; panels: Panel[
             inert={i !== index}
             sx={{ flex: '0 0 100%', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
           >
-            {panel.content}
+            {i === index || shown.has(i) ? panel.content : null}
           </Box>
         ))}
       </Box>

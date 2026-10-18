@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router';
 import { App } from '../src/app/App.tsx';
 import { makeStore } from '../src/app/store.ts';
+import { server } from './server.ts';
 
 export function renderApp(route = '/') {
   const store = makeStore();
@@ -104,3 +105,11 @@ export const positionsHandler = (list: Position[] | (() => Position[])) =>
     const url = new URL(request.url);
     return HttpResponse.json(url.pathname.endsWith('/summary') ? summaryOf(rows) : positionsResponse(rows, url));
   });
+
+/** Records the URL of every request the page sends, so a test can say what a screen asked for. */
+export function recordRequests() {
+  const urls: URL[] = [];
+  server.events.on('request:start', ({ request }) => urls.push(new URL(request.url)));
+  onTestFinished(() => server.events.removeAllListeners());
+  return () => urls;
+}

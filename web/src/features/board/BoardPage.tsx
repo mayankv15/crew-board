@@ -9,6 +9,7 @@ import { useGetPositionSummaryQuery, useGetPositionsQuery } from '../../shared/a
 import { SlidingPanels } from '../../shared/SlidingPanels.tsx';
 import { EmptyState, PageHeader, StatPill } from '../../shared/ui.tsx';
 import { useDebounced } from '../../shared/useDebounced.ts';
+import { useEverTrue } from '../../shared/useEverTrue.ts';
 import { useNow } from '../../shared/useNow.ts';
 import { ActiveFilters, BoardToolbar } from './BoardToolbar.tsx';
 import { loadPageSize, savePageSize } from './pagePrefs.ts';
@@ -21,6 +22,8 @@ const AssignDrawer = lazy(() => import('../assign/AssignDrawer.tsx').then((m) =>
 const PositionDialog = lazy(() => import('./PositionDialog.tsx').then((m) => ({ default: m.PositionDialog })));
 
 type Paging = Record<Tab, GridPaginationModel>;
+
+const COUNT_ONLY = 1;
 
 export function BoardPage() {
   const dispatch = useAppDispatch();
@@ -67,19 +70,16 @@ export function BoardPage() {
     setPaged({ key: viewKey, models: { ...models, [which]: model } });
   };
 
+  // A tab nobody has opened yet only needs its total for the tab badge, so it asks for a page of one row.
+  // Its rows are fetched the first time the tab is shown.
   const common = { ...filters, sort, ...(q ? { q } : {}) };
-  const open = useGetPositionsQuery({
-    ...common,
-    status: 'open',
-    page: models.open.page + 1,
-    pageSize: models.open.pageSize,
-  });
-  const filled = useGetPositionsQuery({
-    ...common,
-    status: 'filled',
-    page: models.filled.page + 1,
-    pageSize: models.filled.pageSize,
-  });
+  const seen: Record<Tab, boolean> = { open: useEverTrue(tab === 'open'), filled: useEverTrue(tab === 'filled') };
+  const argsFor = (which: Tab) =>
+    seen[which]
+      ? { ...common, status: which, page: models[which].page + 1, pageSize: models[which].pageSize }
+      : { ...common, status: which, page: 1, pageSize: COUNT_ONLY };
+  const open = useGetPositionsQuery(argsFor('open'));
+  const filled = useGetPositionsQuery(argsFor('filled'));
   const summary = useGetPositionSummaryQuery();
 
   const searchBox = useRef<HTMLInputElement>(null);
@@ -173,11 +173,14 @@ export function BoardPage() {
 
   const grid = (which: Tab) => {
     const result = which === 'open' ? open : filled;
+    // RTK keeps the last result while new arguments load. Right after a tab is first opened that last result is
+    // the one-row count, which must not be drawn as the table, so the table waits for its own page.
+    const placeholder = result.data?.pageSize === COUNT_ONLY && result.currentData === undefined && seen[which];
     return (
       <PositionGrid
         label={which}
-        data={result.data}
-        isLoading={result.isLoading}
+        data={placeholder ? undefined : result.data}
+        isLoading={result.isLoading || placeholder}
         isFetching={result.isFetching}
         isError={result.isError}
         error={result.error}

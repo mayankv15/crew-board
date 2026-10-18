@@ -183,5 +183,10 @@ export type SyncRun = z.infer<typeof SyncRunSchema>;
 export const SyncRunsQuery = z.object({ limit: z.coerce.number().int().min(1).max(50).default(10) });
 export type SyncRunsQuery = z.infer<typeof SyncRunsQuery>;
 
+// An opaque number that changes whenever anything the board shows changes. Clients compare it for equality
+// with the last value they saw, and refetch when it differs.
+export const ChangesSchema = z.object({ version: z.number().int().nonnegative() });
+export type Changes = z.infer<typeof ChangesSchema>;
+
 export const StartSyncResponse = z.object({ runId: z.string() });
 export type StartSyncResponse = z.infer<typeof StartSyncResponse>;

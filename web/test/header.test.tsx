@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { position, positionsHandler, renderApp, run } from './helpers.tsx';
+import { position, positionsHandler, recordRequests, renderApp, run } from './helpers.tsx';
 import { server } from './server.ts';
 
 const board = () => positionsHandler([position()]);
@@ -38,6 +38,18 @@ describe('HR data status in the header', () => {
     );
     renderApp();
     expect(await screen.findByRole('link', { name: label })).toBeInTheDocument();
+  });
+
+  it('asks for the latest run only, not the whole history', async () => {
+    server.use(board());
+    const urls = recordRequests();
+    renderApp();
+    await screen.findByRole('link', { name: /HR data: never synced/ });
+    expect(
+      urls()
+        .filter((u) => u.pathname === '/api/sync/runs')
+        .map((u) => u.searchParams.get('limit')),
+    ).toEqual(['1']);
   });
 
   it('does not hide an unreachable sync status behind a spinner', async () => {

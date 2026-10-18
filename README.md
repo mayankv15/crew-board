@@ -243,10 +243,11 @@ docs/     Notes on the colour choices
 
 | Part                     | Hours |
 | ------------------------ | ----- |
-| 1. API                   |       |
-| 2. HR sync and webhook   |       |
-| 3. React screen          |       |
-| 4. Pipeline and write-up |       |
+| 1. API                   | 2.5   |
+| 2. HR sync and webhook   | 1.5   |
+| 3. React screen          | 2.5   |
+| 4. Pipeline and write-up | 1     |
+| Total                    | 7.5   |
 
 What I left out, and what I would do next:
 

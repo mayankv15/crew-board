@@ -1,3 +1,14 @@
+// Tables whose rows the board shows. Any write to one of them moves data_version, so the web app can ask
+// "has anything changed?" with one cheap read. Triggers cover every write path, including ones added later.
+const TRACKED_TABLES = ['assignments', 'positions', 'projects', 'technicians', 'technician_skills'];
+const VERSION_TRIGGERS = TRACKED_TABLES.flatMap((table) =>
+  (['INSERT', 'UPDATE', 'DELETE'] as const).map(
+    (op) =>
+      `CREATE TRIGGER ${table}_${op.toLowerCase()}_bumps_version AFTER ${op} ON ${table} ` +
+      'BEGIN UPDATE data_version SET version = version + 1 WHERE id = 1; END;',
+  ),
+).join('\n');
+
 export const MIGRATIONS: { id: number; name: string; sql: string }[] = [
   {
     id: 1,
@@ -85,6 +96,20 @@ CREATE INDEX idx_positions_project ON positions (project_id);
 CREATE INDEX idx_positions_skill_start ON positions (skill, start_date);
 CREATE INDEX idx_technician_skills_skill ON technician_skills (skill);
 CREATE INDEX idx_sync_runs_started ON sync_runs (started_at);
+`,
+  },
+  {
+    id: 2,
+    name: 'data_version',
+    sql: `
+CREATE TABLE data_version (
+  id       INTEGER PRIMARY KEY CHECK (id = 1),
+  version  INTEGER NOT NULL
+);
+
+INSERT INTO data_version (id, version) VALUES (1, 0);
+
+${VERSION_TRIGGERS}
 `,
   },
 ];

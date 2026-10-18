@@ -15,6 +15,7 @@ import type { Config } from './config.ts';
 import type { Db } from './db/connection.ts';
 import { AppError } from './errors.ts';
 import type { HrClient } from './integration/hrClient.ts';
+import { changeRoutes } from './routes/changes.ts';
 import { healthRoutes } from './routes/health.ts';
 import { positionRoutes } from './routes/positions.ts';
 import { projectRoutes } from './routes/projects.ts';
@@ -112,6 +113,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   const routeDeps: RouteDeps = { ...deps, app };
   await app.register(healthRoutes(routeDeps));
+  await app.register(changeRoutes(routeDeps));
   await app.register(projectRoutes(routeDeps));
   await app.register(positionRoutes(routeDeps));
   await app.register(technicianRoutes(routeDeps));

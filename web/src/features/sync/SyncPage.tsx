@@ -19,12 +19,14 @@ import {
   Typography,
 } from '@mui/material';
 import type { SyncRun } from '@crew-board/shared';
+import { skipToken } from '@reduxjs/toolkit/query/react';
 import { useEffect, useRef } from 'react';
 import { useAppDispatch } from '../../app/hooks.ts';
 import { announce } from '../../app/uiSlice.ts';
-import { useGetSyncRunsQuery, useStartSyncMutation } from '../../shared/api.ts';
+import { api, useGetSyncRunQuery, useGetSyncRunsQuery, useStartSyncMutation } from '../../shared/api.ts';
 import { errorMessage } from '../../shared/errors.ts';
 import { EmptyState, ErrorState, LoadingBlock, PageHeader } from '../../shared/ui.tsx';
+import { usePageVisible } from '../../shared/usePageVisible.ts';
 import { tint } from '../../theme/brand.ts';
 
 const STATUS = {
@@ -154,14 +156,20 @@ function RunCard({ run, index }: { run: SyncRun; index: number }) {
 
 export function SyncPage({ pollMs: pollWhileRunning = 1000 }: { pollMs?: number }) {
   const dispatch = useAppDispatch();
-  const { data: runs, isLoading, isError, error, refetch } = useGetSyncRunsQuery({ limit: 10 });
+  const visible = usePageVisible();
+  const { data: listed, isLoading, isError, error, refetch } = useGetSyncRunsQuery({ limit: 10 });
+
+  const listedActive = listed?.find((r) => r.status === 'running');
+  const { data: live } = useGetSyncRunQuery(listedActive?.id ?? skipToken, {
+    pollingInterval: visible ? pollWhileRunning : 0,
+  });
+  const runs = listed?.map((r) => (live?.id === r.id ? live : r));
   const active = runs?.find((r) => r.status === 'running');
   const isRunning = active !== undefined;
+  const liveFinished = live !== undefined && live.status !== 'running';
   useEffect(() => {
-    if (!isRunning) return;
-    const id = setInterval(() => void refetch(), pollWhileRunning);
-    return () => clearInterval(id);
-  }, [isRunning, pollWhileRunning, refetch]);
+    if (liveFinished) void dispatch(api.util.invalidateTags(['SyncRuns']));
+  }, [liveFinished, dispatch]);
   const [start, startState] = useStartSyncMutation();
 
   const wasRunning = useRef(false);

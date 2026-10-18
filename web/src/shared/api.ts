@@ -174,6 +174,11 @@ export const api = createApi({
       providesTags: ['SyncRuns'],
     }),
 
+    getSyncRun: build.query<SyncRun, string>({
+      query: (id) => `/sync/runs/${id}`,
+      transformResponse: parsed(SyncRunSchema),
+    }),
+
     startSync: build.mutation<{ runId: string }, void>({
       query: () => ({ url: '/sync/technicians', method: 'POST' }),
       transformResponse: parsed(StartSyncResponse),
@@ -189,5 +194,6 @@ export const {
   useAssignMutation,
   useUnassignMutation,
   useGetSyncRunsQuery,
+  useGetSyncRunQuery,
   useStartSyncMutation,
 } = api;

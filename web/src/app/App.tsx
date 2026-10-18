@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { BoardPage } from '../features/board/BoardPage.tsx';
 import { SlidingPanels } from '../shared/SlidingPanels.tsx';
+import { useChangeWatcher } from '../shared/useChangeWatcher.ts';
 import { createAppTheme } from '../theme/theme.ts';
 import { EmptyState, LoadingBlock } from '../shared/ui.tsx';
 import { AppHeader } from './AppHeader.tsx';
@@ -29,6 +30,7 @@ const SyncPage = lazy(() => import('../features/sync/SyncPage.tsx').then((m) => 
 const TITLES: Record<string, string> = { '/': 'Board', '/sync': 'HR sync' };
 
 export function App() {
+  useChangeWatcher();
   const theme = useMemo(() => createAppTheme(), []);
   const { pathname } = useLocation();
   const page = pathname === '/' ? 0 : pathname === '/sync' ? 1 : -1;

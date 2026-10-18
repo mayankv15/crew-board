@@ -1,12 +1,14 @@
 import {
   AssignmentSchema,
   CandidateSchema,
+  ChangesSchema,
   PositionSchema,
   PositionSummarySchema,
   StartSyncResponse,
   SyncRunSchema,
   pageOf,
   type Candidate,
+  type Changes,
   type Page,
   type Position,
   type PositionSort,
@@ -174,6 +176,11 @@ export const api = createApi({
       providesTags: ['SyncRuns'],
     }),
 
+    getChanges: build.query<Changes, void>({
+      query: () => '/changes',
+      transformResponse: parsed(ChangesSchema),
+    }),
+
     getSyncRun: build.query<SyncRun, string>({
       query: (id) => `/sync/runs/${id}`,
       transformResponse: parsed(SyncRunSchema),
@@ -195,5 +202,6 @@ export const {
   useUnassignMutation,
   useGetSyncRunsQuery,
   useGetSyncRunQuery,
+  useGetChangesQuery,
   useStartSyncMutation,
 } = api;

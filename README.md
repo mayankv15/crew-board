@@ -100,7 +100,7 @@ Colours are indigo for the brand and actions, cyan-teal for available or filled,
 
 **HR sync.** The last ten runs with counts, errors and live progress, plus a chip in the header on every page that says when HR was last synced and whether it went well.
 
-**When things go wrong.** Unassigning offers Undo in the toast. A refused booking stays visible in the drawer even after the list refreshes. Every error has a Try again button. The board refreshes when the window regains focus.
+**When things go wrong.** Unassigning offers Undo in the toast. A refused booking stays visible in the drawer even after the list refreshes. Every error has a Try again button. The board refreshes when the window regains focus, at most once every 30 seconds (`web/src/shared/focusListeners.ts`), because RTK Query alone would refetch on every tab switch.
 
 Everything works from the keyboard. Dialogs trap and return focus, and there are skip links past the header and past a long table to its page controls. Motion is switched off for people who ask for reduced motion. It works from tablet width up. I ran an axe scan on each screen in light and dark in Chrome against the production build with zero violations, and the same scan runs in the test suite.
 
@@ -256,5 +256,6 @@ What I left out, and what I would do next:
 - Webhook secret rotation, accepting the current and previous secret together.
 - Keyset pagination and a trigram index for search, once the lists outgrow offset paging.
 - A real two-process concurrency test for the booking rule. Today it is tested in one process.
+- Pushing webhook changes to the browser. Today the board only learns about an HR change when the window regains focus or the page reloads. I would push a "technician changed" event from the webhook handler and invalidate only the affected RTK Query tags. Server-Sent Events fit better than a WebSocket because the traffic is one way, and the browser reconnects by itself. A WebSocket only pays off if the screen later needs to send live messages back.
 
 DESIGN.md covers running this on Azure and what changes at 50 projects, 3,000 technicians and 200 HR events a minute. AI_NOTES.md covers how I used AI tools.

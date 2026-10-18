@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { addDays } from '@crew-board/shared';
 import { position, positionsHandler, positionsResponse, renderApp, summaryOf } from './helpers.tsx';
 import { server } from './server.ts';
@@ -28,6 +28,13 @@ const positions = [
 const today = () => new Date().toISOString().slice(0, 10);
 const openPanel = () => screen.findByRole('tabpanel', { name: /^open/i });
 const filledPanel = () => screen.findByRole('tabpanel', { name: /^filled/i });
+
+function recordRequests() {
+  const urls: URL[] = [];
+  server.events.on('request:start', ({ request }) => urls.push(new URL(request.url)));
+  onTestFinished(() => server.events.removeAllListeners());
+  return () => urls;
+}
 
 afterEach(() => {
   window.innerWidth = 1280;
@@ -63,6 +70,35 @@ describe('project board', () => {
     renderApp();
     await screen.findByText('Frankfurt DC-2');
     await waitFor(() => expect(screen.getByText('seats to fill').previousSibling).toHaveTextContent('1'));
+  });
+
+  it('asks on landing only for what the first screen shows', async () => {
+    server.use(positionsHandler(positions));
+    const urls = recordRequests();
+    renderApp();
+    await within(await openPanel()).findByText('Frankfurt DC-2');
+    expect(await screen.findByRole('tab', { name: 'Filled (1)' })).toBeInTheDocument();
+
+    const filledSizes = urls()
+      .filter((u) => u.pathname === '/api/positions' && u.searchParams.get('status') === 'filled')
+      .map((u) => u.searchParams.get('pageSize'));
+    expect(filledSizes).toEqual(['1']);
+    expect(screen.queryByRole('heading', { name: 'HR sync' })).not.toBeInTheDocument();
+  });
+
+  it('loads the filled rows the first time that tab is opened, and not before', async () => {
+    server.use(positionsHandler(positions));
+    const urls = recordRequests();
+    renderApp();
+    await userEvent.click(await screen.findByRole('tab', { name: 'Filled (1)' }));
+    expect(await within(await filledPanel()).findByText('Dublin Hall B')).toBeInTheDocument();
+
+    const filledSizes = urls()
+      .filter((u) => u.pathname === '/api/positions' && u.searchParams.get('status') === 'filled')
+      .map((u) => u.searchParams.get('pageSize'));
+    expect(filledSizes).toHaveLength(2);
+    expect(filledSizes[0]).toBe('1');
+    expect(filledSizes[1]).not.toBe('1');
   });
 
   it('shows an empty state when there are no positions at all', async () => {

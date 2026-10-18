@@ -9,8 +9,14 @@ export const FOCUS_REFETCH_GAP_MS = 30_000;
  * would send ten rounds of requests. This handler passes a focus event on only when the last one was at least
  * `minGapMs` ago, counting from page load, since the first screen has just fetched. Going back online is
  * rare and means the data is probably stale, so it is never throttled.
+ *
+ * A focus event that is held back is not sent at all, so RTK's own "focused" flag can be out of date. Nothing
+ * here may rely on it, which is why polling pauses with usePageVisible and not skipPollingIfUnfocused.
  */
-export function throttledFocusListeners(minGapMs = FOCUS_REFETCH_GAP_MS, now: () => number = Date.now): ListenerHandler {
+export function throttledFocusListeners(
+  minGapMs = FOCUS_REFETCH_GAP_MS,
+  now: () => number = Date.now,
+): ListenerHandler {
   return (dispatch, { onFocus, onFocusLost, onOnline, onOffline }) => {
     let lastRefetch = now();
 

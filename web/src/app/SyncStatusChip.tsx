@@ -4,15 +4,28 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import SyncIcon from '@mui/icons-material/Sync';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Chip, Tooltip } from '@mui/material';
+import { useState } from 'react';
 import { NavLink } from 'react-router';
 import { useGetSyncRunsQuery } from '../shared/api.ts';
 import { timeAgo, useNow } from '../shared/useNow.ts';
+import { usePageVisible } from '../shared/usePageVisible.ts';
 import { tint } from '../theme/brand.ts';
 
+const POLL_WHILE_RUNNING_MS = 5000;
+
 export function SyncStatusChip() {
-  const { data, isLoading, isError } = useGetSyncRunsQuery({ limit: 10 });
+  const visible = usePageVisible();
+  const [polling, setPolling] = useState(false);
+  // Only the latest run is needed, so one run comes back, not ten. The chip checks again on its own while a run
+  // is going, because the sync might have been started by someone else or from the command line.
+  const { data, isLoading, isError } = useGetSyncRunsQuery(
+    { limit: 1 },
+    { pollingInterval: polling && visible ? POLL_WHILE_RUNNING_MS : 0 },
+  );
   const now = useNow(30_000);
   const latest = data?.[0];
+  const running = latest?.status === 'running';
+  if (running !== polling) setPolling(running);
 
   let label = 'HR data: checking';
   let tone: 'success' | 'warning' | 'error' | 'info' = 'info';

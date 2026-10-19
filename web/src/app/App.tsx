@@ -8,6 +8,7 @@ import { useChangeWatcher } from '../shared/useChangeWatcher.ts';
 import { createAppTheme } from '../theme/theme.ts';
 import { EmptyState, LoadingBlock } from '../shared/ui.tsx';
 import { AppHeader } from './AppHeader.tsx';
+import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { Notifier } from './Notifier.tsx';
 
 function NotFound() {
@@ -86,24 +87,26 @@ export function App() {
               py: { xs: 2, md: 2.5 },
             }}
           >
-            {page === -1 ? (
-              <NotFound />
-            ) : (
-              <SlidingPanels
-                index={page}
-                panels={[
-                  { id: 'page-board', content: <BoardPage /> },
-                  {
-                    id: 'page-sync',
-                    content: (
-                      <Suspense fallback={<LoadingBlock label="Loading HR sync" rows={3} />}>
-                        <SyncPage />
-                      </Suspense>
-                    ),
-                  },
-                ]}
-              />
-            )}
+            <ErrorBoundary key={pathname}>
+              {page === -1 ? (
+                <NotFound />
+              ) : (
+                <SlidingPanels
+                  index={page}
+                  panels={[
+                    { id: 'page-board', content: <BoardPage /> },
+                    {
+                      id: 'page-sync',
+                      content: (
+                        <Suspense fallback={<LoadingBlock label="Loading HR sync" rows={3} />}>
+                          <SyncPage />
+                        </Suspense>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </ErrorBoundary>
           </Container>
         </Box>
       </Box>

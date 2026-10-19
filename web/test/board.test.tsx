@@ -762,3 +762,29 @@ describe('quick views, shortcut and remembered page size', () => {
     localStorage.removeItem('crewboard.pageSize');
   });
 });
+
+describe('unexpected data', () => {
+  it('shows an error with a retry button, not a blank page, when the server sends the wrong shape', async () => {
+    server.use(
+      http.get(/\/api\/positions$/, () =>
+        HttpResponse.json({ data: [{ id: 'x' }], page: 1, pageSize: 25, total: 1, totalPages: 1 }),
+      ),
+      http.get('*/api/positions/summary', () => HttpResponse.json(summaryOf(positions))),
+    );
+    renderApp();
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /HR sync/i })).toBeInTheDocument();
+  });
+
+  it('shows a page-not-found screen for an address that does not exist', async () => {
+    renderApp('/positions/does-not-exist');
+    expect(await screen.findByText('Page not found')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to the board' })).toBeInTheDocument();
+  });
+
+  it('ignores a made-up skill, sort or tab in the address instead of breaking', async () => {
+    server.use(positionsHandler(positions));
+    renderApp('/?tab=nope&sort=weird&skill=juggling&from=not-a-date');
+    expect(await within(await openPanel()).findByText('Frankfurt DC-2')).toBeInTheDocument();
+  });
+});
